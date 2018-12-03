@@ -2,6 +2,7 @@ package com.zzjz.zzdj.controller;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.zzjz.zzdj.service.ElasticService;
 import com.zzjz.zzdj.util.Constant;
 import org.apache.http.HttpHost;
 import org.elasticsearch.action.search.SearchRequest;
@@ -9,6 +10,7 @@ import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.BucketOrder;
 import org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramInterval;
@@ -22,14 +24,18 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.elasticsearch.search.aggregations.bucket.histogram.Histogram.Bucket;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +52,18 @@ public class ElasticController {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(ElasticController.class);
 
+    @Value("${ES_HOST}")
+    String esHost;
+
+    @Value("${ES_PORT}")
+    int esPort;
+
+    @Value("${ES_METHOD}")
+    String esMethod;
+
+    @Autowired
+    ElasticService elasticService;
+
     /**
      * 实时监测数据[电建左一]
      * @param hours 小时数
@@ -53,32 +71,13 @@ public class ElasticController {
      */
     @RequestMapping(value = "/realMonitor/{hours}", method = RequestMethod.GET)
     public JsonObject realMonitor(@PathVariable("hours") int hours) {
-        JsonObject bigJson = new JsonObject();
-        JsonObject json = new JsonObject();
-        json.addProperty("in", "200M");
-        json.addProperty("out", "300M");
-        json.addProperty("all", "500M");
-        bigJson.add("网络总流量", json);
-
-        bigJson.addProperty("入侵检测", "88");
-        bigJson.addProperty("漏洞扫描", "99");
-        bigJson.addProperty("服务器可用性", "90%");
-        return bigJson;
-    }
-
-    /**
-     * 实时监测数据[电建左一]
-     * @param hours 小时数
-     * @return 结果
-     */
-    @RequestMapping(value = "/realMonitor2/{hours}", method = RequestMethod.GET)
-    public JsonObject realMonitor2(@PathVariable("hours") int hours) {
+        LOGGER.info("开始调用realMonitor接口,时间参数为" + hours);
         JsonObject bigJson = new JsonObject();
         RestHighLevelClient client = new RestHighLevelClient(
-                RestClient.builder(
-                        new HttpHost(Constant.ES_HOST, Constant.ES_PORT, Constant.ES_METHOD)));
+                RestClient.builder(new HttpHost(esHost, esPort, esMethod)));
         String format = "yyyy-MM-dd HH:mm:ss";
         String oldTime = DateTime.now().minusHours(hours).toString(format);
+        LOGGER.info("查询的起始时间为" + oldTime);
         // 1.入侵检测数量
         SearchRequest searchRequest1 = new SearchRequest(Constant.SNORT_INDEX);
         SearchSourceBuilder searchSourceBuilder1 = new SearchSourceBuilder();
@@ -137,33 +136,62 @@ public class ElasticController {
         searchRequest3.source(searchSourceBuilder3);
         try {
             SearchResponse searchResponse = client.search(searchRequest3);
-            long nessusCount = searchResponse.getHits().totalHits;
-            //bigJson.addProperty("漏洞扫描", nessusCount);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        //查询最近NMAP_SCAN_INTERVAL分钟的nmap记录
-        String oldTime_n = DateTime.now().minusMinutes(Constant.NMAP_SCAN_INTERVAL).toString(format);
-        SearchRequest searchRequestN = new SearchRequest(Constant.NMAP_INDEX);
-        SearchSourceBuilder searchSourceBuilderN = new SearchSourceBuilder();
-        searchSourceBuilderN.size(1000);
-        searchSourceBuilderN.query(QueryBuilders.rangeQuery("@timestamp")
-                .format(format).gte(oldTime_n).timeZone("Asia/Shanghai"));
-        searchSourceBuilderN.fetchSource(new String[]{"status", "@timestamp", "ipv4"}, null);
-        searchRequestN.source(searchSourceBuilderN);
-        try {
-            SearchResponse searchResponse = client.search(searchRequestN);
-            long nessusCount = searchResponse.getHits().totalHits;
-            //bigJson.addProperty("漏洞扫描", nessusCount);
+            long allMachineCount = searchResponse.getHits().totalHits;
+            List<String> onlineSocSystem = new ArrayList<>();
+            //查询最近一次的nmap记录
+            Map<String, Boolean> nmapMap = elasticService.getAllNmap();
+            Iterator it = searchResponse.getHits().iterator();
+            while (it.hasNext()) {
+                SearchHit hit = (SearchHit) it.next();
+                String ip = hit.getSourceAsMap().get("ip").toString();
+                if (nmapMap.get(ip) != null && nmapMap.get(ip)) {
+                    onlineSocSystem.add(ip);
+                }
+            }
+            int res = (int) ((onlineSocSystem.size() * 100) / allMachineCount);
+            bigJson.addProperty("服务器可用率", res + "%");
         } catch (IOException e) {
             e.printStackTrace();
         }
 
         // 4.网络总流量
+        // 通过ntopng数据得出
+        SearchRequest searchRequest4 = new SearchRequest(Constant.NTOPNG_INDEX);
+        SearchSourceBuilder searchSourceBuilder4 = new SearchSourceBuilder();
+        searchSourceBuilder4.size(0);
+        searchSourceBuilder4.query(QueryBuilders.rangeQuery("@timestamp")
+                .format(format).gte(oldTime).timeZone("Asia/Shanghai"));
+        searchSourceBuilder4.aggregation(AggregationBuilders.sum("inBytes").field("IN_BYTES"));
+        searchSourceBuilder4.aggregation(AggregationBuilders.sum("outBytes").field("OUT_BYTES"));
+        searchRequest4.source(searchSourceBuilder4);
+        try {
+            SearchResponse searchResponse = client.search(searchRequest4);
+            ParsedSum inParsedSum = searchResponse.getAggregations().get("inBytes");
+            String inStr = Constant.bytes2kb((long) inParsedSum.getValue());
+            ParsedSum outParsedSum = searchResponse.getAggregations().get("outBytes");
+            String outStr = Constant.bytes2kb((long) outParsedSum.getValue());
+            long total = (long) (inParsedSum.getValue() + outParsedSum.getValue());
+            String totalStr = Constant.bytes2kb(total);
+            JsonObject flowObject = new JsonObject();
+            flowObject.addProperty("in", inStr);
+            flowObject.addProperty("out", outStr);
+            flowObject.addProperty("total", totalStr);
+            bigJson.add("网络总流量", flowObject);
 
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                client.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        LOGGER.info("realMonitor结果为" + bigJson);
         return bigJson;
     }
+
+
 
     public static void main(String[] args) {
         int hours = 24;
@@ -171,20 +199,23 @@ public class ElasticController {
         String oldTime = DateTime.now().minusHours(hours).toString(format);
         RestHighLevelClient client = new RestHighLevelClient(
                 RestClient.builder(
-                        new HttpHost(Constant.ES_HOST, Constant.ES_PORT, Constant.ES_METHOD)));
+                        new HttpHost("es1", 9200, "http")));
 
-        //查询最近NMAP_SCAN_INTERVAL + 1分钟的nmap记录
-        String oldTime_n = DateTime.now().minusMinutes(Constant.NMAP_SCAN_INTERVAL).toString(format);
-        SearchRequest searchRequestN = new SearchRequest(Constant.NMAP_INDEX);
-        SearchSourceBuilder searchSourceBuilderN = new SearchSourceBuilder();
-        searchSourceBuilderN.size(1000);
-        searchSourceBuilderN.query(QueryBuilders.rangeQuery("@timestamp")
-                .format(format).gte(oldTime_n).timeZone("Asia/Shanghai"));
-        searchSourceBuilderN.fetchSource(new String[]{"status", "@timestamp", "ipv4"}, null);
-        searchRequestN.source(searchSourceBuilderN);
+        SearchRequest searchRequest2 = new SearchRequest(Constant.NESSUS_INDEX);
+        SearchSourceBuilder searchSourceBuilder2 = new SearchSourceBuilder();
+        searchSourceBuilder2.size(0);
+        searchSourceBuilder2.query(QueryBuilders.boolQuery()
+                .must(QueryBuilders.rangeQuery("@timestamp")
+                        .format(format).gte(oldTime).timeZone("Asia/Shanghai"))
+                .mustNot(QueryBuilders.matchPhraseQuery("ip",  Constant.NESSUS_IP))
+                .mustNot(QueryBuilders.boolQuery()
+                        .should(QueryBuilders.matchPhraseQuery("severity", "0"))
+                        .should(QueryBuilders.matchPhraseQuery("severity", "1"))));
+        searchRequest2.source(searchSourceBuilder2);
         try {
-            SearchResponse searchResponse = client.search(searchRequestN);
+            SearchResponse searchResponse = client.search(searchRequest2);
             long nessusCount = searchResponse.getHits().totalHits;
+            System.out.println(1);
             //bigJson.addProperty("漏洞扫描", nessusCount);
         } catch (IOException e) {
             e.printStackTrace();
@@ -202,7 +233,7 @@ public class ElasticController {
     public JsonObject serverResponseTrend(@PathVariable("hours") int hours) {
         RestHighLevelClient client = new RestHighLevelClient(
                 RestClient.builder(
-                        new HttpHost(Constant.ES_HOST, Constant.ES_PORT, Constant.ES_METHOD)));
+                        new HttpHost(esHost, esPort, esMethod)));
         String format = "yyyy-MM-dd HH:mm:ss";
         String oldTime = DateTime.now().minusHours(hours).toString(format);
         LOGGER.info("开始调用serverResponseTrend服务响应时间趋势");
@@ -283,7 +314,7 @@ public class ElasticController {
     public JsonObject flowTrend(@PathVariable("hours") int hours) {
         RestHighLevelClient client = new RestHighLevelClient(
                 RestClient.builder(
-                        new HttpHost(Constant.ES_HOST, Constant.ES_PORT, Constant.ES_METHOD)));
+                        new HttpHost(esHost, esPort, esMethod)));
         String format = "yyyy-MM-dd HH:mm:ss";
         String oldTime = DateTime.now().minusHours(hours).toString(format);
         LOGGER.info("开始调用flowTrend流量趋势");
@@ -329,8 +360,6 @@ public class ElasticController {
         }
         return null;
     }
-
-
 
 
 }
