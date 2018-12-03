@@ -56,5 +56,17 @@ public class Constant {
         return (returnValue + "KB");
     }
 
+    public static float bytes2mb(long bytes) {
+        BigDecimal filesize = new BigDecimal(bytes);
+        BigDecimal megabyte = new BigDecimal(1024 * 1024);
+        float returnValue = filesize.divide(megabyte, 1, BigDecimal.ROUND_UP)
+                .floatValue();
+        return (returnValue);
+
+    }
+
+    public static void main(String[] args) {
+        System.out.println(bytes2mb(1468774));
+    }
 
 }

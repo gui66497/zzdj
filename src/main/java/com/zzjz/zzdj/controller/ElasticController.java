@@ -343,7 +343,7 @@ public class ElasticController {
                 String dateTimeStr = dateTime.toString(format);
                 timeArray.add(dateTimeStr);
                 ParsedSum parsedSum = bucket.getAggregations().get("outBytes");
-                int value = (int) parsedSum.getValue();
+                float value = Constant.bytes2mb((long) parsedSum.getValue());
                 valueArray.add(value);
             }
             finalJson.add("timeArr", timeArray);
@@ -360,6 +360,7 @@ public class ElasticController {
         }
         return null;
     }
+
 
 
 }
