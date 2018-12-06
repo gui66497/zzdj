@@ -148,6 +148,8 @@ public class ElasticController {
                     onlineSocSystem.add(ip);
                 }
             }
+            LOGGER.info("在线主机有:" + onlineSocSystem.toString());
+            LOGGER.info("在线主机数为:" + onlineSocSystem.size());
             int res = (int) ((onlineSocSystem.size() * 100) / allMachineCount);
             bigJson.addProperty("服务器可用率", res + "%");
         } catch (IOException e) {
