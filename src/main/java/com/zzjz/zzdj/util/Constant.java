@@ -65,6 +65,117 @@ public class Constant {
 
     }
 
+    public static String unReglularQuery = "{\n" +
+            "  \"size\": 5000,\n" +
+            "  \"query\": {\n" +
+            "    \"bool\": {\n" +
+            "      \"must\": [\n" +
+            "        {\n" +
+            "          \"bool\": {\n" +
+            "            \"minimum_should_match\": 1,\n" +
+            "            \"should\": [\n" +
+            "              {\n" +
+            "                \"match_phrase\": {\n" +
+            "                  \"IPV4_DST_ADDR.keyword\": \"10.1.242.87\"\n" +
+            "                }\n" +
+            "              },\n" +
+            "              {\n" +
+            "                \"match_phrase\": {\n" +
+            "                  \"IPV4_DST_ADDR.keyword\": \"10.1.242.93\"\n" +
+            "                }\n" +
+            "              },\n" +
+            "              {\n" +
+            "                \"match_phrase\": {\n" +
+            "                  \"IPV4_DST_ADDR.keyword\": \"10.1.242.86\"\n" +
+            "                }\n" +
+            "              },\n" +
+            "              {\n" +
+            "                \"match_phrase\": {\n" +
+            "                  \"IPV4_DST_ADDR.keyword\": \"10.1.242.95\"\n" +
+            "                }\n" +
+            "              },\n" +
+            "              {\n" +
+            "                \"match_phrase\": {\n" +
+            "                  \"IPV4_DST_ADDR.keyword\": \"10.1.242.104\"\n" +
+            "                }\n" +
+            "              },\n" +
+            "              {\n" +
+            "                \"match_phrase\": {\n" +
+            "                  \"IPV4_DST_ADDR.keyword\": \"10.1.242.84\"\n" +
+            "                }\n" +
+            "              }\n" +
+            "            ]\n" +
+            "          }\n" +
+            "        },\n" +
+            "        {\n" +
+            "          \"match_phrase\": {\n" +
+            "            \"L7_PROTO_NAME.keyword\": {\n" +
+            "              \"query\": \"HTTP\"\n" +
+            "            }\n" +
+            "          }\n" +
+            "        },\n" +
+            "        {\n" +
+            "          \"bool\": {\n" +
+            "            \"should\": [\n" +
+            "              {\n" +
+            "                \"match_phrase\": {\n" +
+            "                  \"L4_DST_PORT\": \"80\"\n" +
+            "                }\n" +
+            "              },\n" +
+            "              {\n" +
+            "                \"match_phrase\": {\n" +
+            "                  \"L4_DST_PORT\": \"8080\"\n" +
+            "                }\n" +
+            "              }\n" +
+            "            ],\n" +
+            "            \"minimum_should_match\": 1\n" +
+            "          }\n" +
+            "        },\n" +
+            "        {\n" +
+            "          \"range\": {\n" +
+            "            \"@timestamp\": {\n" +
+            "              \"gte\": 1545741000000,\n" +
+            "              \"lte\": 1545742800000,\n" +
+            "              \"format\": \"epoch_millis\"\n" +
+            "            }\n" +
+            "          }\n" +
+            "        }\n" +
+            "      ],\n" +
+            "      \"must_not\": [\n" +
+            "        {\n" +
+            "          \"bool\": {\n" +
+            "            \"minimum_should_match\": 1,\n" +
+            "            \"should\": [\n" +
+            "              {\n" +
+            "                \"match_phrase\": {\n" +
+            "                  \"IPV4_SRC_ADDR.keyword\": \"10.1.242.111\"\n" +
+            "                }\n" +
+            "              },\n" +
+            "              {\n" +
+            "                \"match_phrase\": {\n" +
+            "                  \"IPV4_SRC_ADDR.keyword\": \"10.1.230.159\"\n" +
+            "                }\n" +
+            "              },\n" +
+            "              {\n" +
+            "                \"match_phrase\": {\n" +
+            "                  \"IPV4_SRC_ADDR.keyword\": \"172.17.0.8\"\n" +
+            "                }\n" +
+            "              }\n" +
+            "            ]\n" +
+            "          }\n" +
+            "        }\n" +
+            "      ]\n" +
+            "    }\n" +
+            "  },\n" +
+            "  \"sort\": [\n" +
+            "    {\n" +
+            "      \"@timestamp\": {\n" +
+            "        \"order\": \"asc\"\n" +
+            "      }\n" +
+            "    }\n" +
+            "  ]\n" +
+            "}";
+
     public static void main(String[] args) {
         System.out.println(bytes2mb(1468774));
     }
