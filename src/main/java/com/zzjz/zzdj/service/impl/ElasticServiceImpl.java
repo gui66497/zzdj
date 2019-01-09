@@ -64,6 +64,12 @@ public class ElasticServiceImpl implements ElasticService {
             return nmapMap;
         } catch (IOException e) {
             e.printStackTrace();
+        } finally {
+            try {
+                client.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
         return null;
     }

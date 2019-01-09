@@ -22,14 +22,19 @@ public class Constant {
     public static final String NMAP_INDEX = "nmap-logstash-*";
 
     /**
+     * 需要排除的ip 61是因为北京虚拟机没有固定对应的实体机而造出来的机器
+     */
+    public static final String[] except_ips = new String[] {"10.1.230.61"};
+
+    /**
      * nmap扫描时间间隔
      */
-    public static final int NMAP_SCAN_INTERVAL = 10;
+    public static final int NMAP_SCAN_INTERVAL = 11;
 
     /**
      * nessus地址
      */
-    public static final String NESSUS_IP = "192.168.1.195";
+    public static final String NESSUS_IP = "10.1.242.80";
 
     /**
      * byte(字节)根据长度转成kb(千字节)和mb(兆字节)或gb
