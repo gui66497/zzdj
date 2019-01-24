@@ -32,14 +32,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.elasticsearch.search.aggregations.bucket.histogram.Histogram.Bucket;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * @author 房桂堂
@@ -76,10 +69,11 @@ public class ElasticController {
         RestHighLevelClient client = new RestHighLevelClient(
                 RestClient.builder(new HttpHost(esHost, esPort, esMethod)));
         String format = "yyyy-MM-dd HH:mm:ss";
+        String oneHourOldTime = DateTime.now().minusHours(1).toString(format);
         String oldTime = DateTime.now().minusHours(hours).toString(format);
         LOGGER.info("查询的起始时间为" + oldTime);
         // 1.入侵检测数量
-        SearchRequest searchRequest1 = new SearchRequest(Constant.SNORT_INDEX);
+        /*SearchRequest searchRequest1 = new SearchRequest(Constant.SNORT_INDEX);
         SearchSourceBuilder searchSourceBuilder1 = new SearchSourceBuilder();
         searchSourceBuilder1.size(0);
         searchSourceBuilder1.query(QueryBuilders.boolQuery()
@@ -102,6 +96,30 @@ public class ElasticController {
             SearchResponse searchResponse = client.search(searchRequest1);
             long snortCount = searchResponse.getHits().totalHits;
             bigJson.addProperty("入侵检测", snortCount);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }*/
+        int realMachineCount = 0;
+        SearchRequest searchRequest1 = new SearchRequest(Constant.SOCSYSTEM_INDEX);
+        SearchSourceBuilder searchSourceBuilder1 = new SearchSourceBuilder();
+        searchSourceBuilder1.size(500);
+        searchSourceBuilder1.query(QueryBuilders.matchAllQuery());
+        searchSourceBuilder1.fetchSource(new String[]{"ip", "manager", "dept", "location"}, null);
+        searchRequest1.source(searchSourceBuilder1);
+        try {
+            SearchResponse searchResponse = client.search(searchRequest1);
+            Iterator it = searchResponse.getHits().iterator();
+            List<String> realPC = new ArrayList<>();
+            while (it.hasNext()) {
+                SearchHit hit = (SearchHit) it.next();
+                String ip = hit.getSourceAsMap().get("ip").toString();
+                //过滤掉不需要监控的机器 目前是北京物理机61
+                if (! Arrays.asList(Constant.except_ips).contains(ip)) {
+                    realPC.add(ip);
+                }
+            }
+            realMachineCount = realPC.size();
+            bigJson.addProperty("服务器数量", realMachineCount);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -138,6 +156,7 @@ public class ElasticController {
             SearchResponse searchResponse = client.search(searchRequest3);
             long allMachineCount = searchResponse.getHits().totalHits;
             List<String> onlineSocSystem = new ArrayList<>();
+            List<String> offlineSocSystem = new ArrayList<>();
             //查询最近一次的nmap记录
             Map<String, Boolean> nmapMap = elasticService.getAllNmap();
             Iterator it = searchResponse.getHits().iterator();
@@ -146,11 +165,15 @@ public class ElasticController {
                 String ip = hit.getSourceAsMap().get("ip").toString();
                 if (nmapMap.get(ip) != null && nmapMap.get(ip)) {
                     onlineSocSystem.add(ip);
+                } else {
+                    offlineSocSystem.add(ip);
                 }
             }
             LOGGER.info("在线主机有:" + onlineSocSystem.toString());
+            LOGGER.info("离线线主机有:" + offlineSocSystem.toString());
             LOGGER.info("在线主机数为:" + onlineSocSystem.size());
-            int res = (int) ((onlineSocSystem.size() * 100) / allMachineCount);
+            LOGGER.info("总主机数为:" + realMachineCount);
+            int res = (int) ((onlineSocSystem.size() * 100) / realMachineCount);
             bigJson.addProperty("服务器可用率", res + "%");
         } catch (IOException e) {
             e.printStackTrace();
@@ -182,6 +205,24 @@ public class ElasticController {
 
         } catch (IOException e) {
             e.printStackTrace();
+        }
+
+        //5 服务系统数量
+        SearchRequest searchRequest5 = new SearchRequest(Constant.HEARTBEAT_INDEX);
+        SearchSourceBuilder searchSourceBuilder5 = new SearchSourceBuilder();
+        searchSourceBuilder5.size(0);
+        searchSourceBuilder5.query(QueryBuilders.rangeQuery("@timestamp")
+                .format(format).gte(oneHourOldTime).timeZone("Asia/Shanghai"));
+        searchSourceBuilder5.aggregation(AggregationBuilders.terms("serverName").field("server_name").size(50));
+        searchRequest5.source(searchSourceBuilder5);
+        try {
+            SearchResponse searchResponse = client.search(searchRequest5);
+            ParsedStringTerms parsedStringTerms = searchResponse.getAggregations().get("serverName");
+            int count = parsedStringTerms.getBuckets().size();
+            bigJson.addProperty("服务系统数量", count);
+
+        } catch (IOException e) {
+            e.printStackTrace();
         } finally {
             try {
                 client.close();
@@ -189,6 +230,7 @@ public class ElasticController {
                 e.printStackTrace();
             }
         }
+
         LOGGER.info("realMonitor结果为" + bigJson);
         return bigJson;
     }
@@ -250,7 +292,7 @@ public class ElasticController {
         searchSourceBuilder.size(0);
         searchSourceBuilder.aggregation(AggregationBuilders.dateHistogram("times").field("@timestamp")
                 .timeZone(DateTimeZone.forID("Asia/Shanghai")).dateHistogramInterval(DateHistogramInterval.minutes(interval)).minDocCount(1)
-                .subAggregation(AggregationBuilders.terms("serverName").field("server_name").size(5).order(BucketOrder.aggregation("duration", false))
+                .subAggregation(AggregationBuilders.terms("serverName").field("server_name").size(50).order(BucketOrder.aggregation("duration", false))
                         .subAggregation(AggregationBuilders.avg("duration").field("monitor.duration.us"))));
         searchRequest.source(searchSourceBuilder);
         try {
@@ -287,7 +329,11 @@ public class ElasticController {
                 JsonArray durationArray = new JsonArray();
                 for (Map<String, Double> map : linkedList) {
                     //转为int 去掉小数点
-                    durationArray.add(map.get(serverName).intValue());
+                    if (map.get(serverName) != null) {
+                        durationArray.add(map.get(serverName).intValue());
+                    } else {
+                        durationArray.add(0);
+                    }
                 }
                 oneJson.add("datas", durationArray);
                 dataArray.add(oneJson);
