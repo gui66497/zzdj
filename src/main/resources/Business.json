@@ -1,0 +1,34 @@
+[{
+  "businessName": "PRP系统",
+  "ipList": ["192.168.1.188", "192.168.1.243"]
+}, {
+  "businessName": "HR系统",
+  "ipList": ["192.168.1.185", "192.168.1.186"]
+},{
+  "businessName": "档案管理系统",
+  "ipList": ["192.168.1.1", "192.168.1.2"]
+},{
+  "businessName": "招标管理系统",
+  "ipList": ["192.168.1.1"]
+},{
+  "businessName": "协同办公系统",
+  "ipList": ["192.168.1.1"]
+},{
+  "businessName": "运营监控平台",
+  "ipList": ["192.168.1.1"]
+},{
+  "businessName": "财务总账系统",
+  "ipList": ["192.168.1.1"]
+},{
+  "businessName": "4A统一身份认证系统",
+  "ipList": ["192.168.1.1"]
+},{
+  "businessName": "国际贸易管理系统",
+  "ipList": ["192.168.1.1"]
+},{
+  "businessName": "电视宣传系统",
+  "ipList": ["192.168.1.1"]
+},{
+  "businessName": "公文管理系统",
+  "ipList": ["192.168.1.1"]
+}]

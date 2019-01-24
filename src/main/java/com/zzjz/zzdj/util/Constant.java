@@ -21,6 +21,10 @@ public class Constant {
 
     public static final String NMAP_INDEX = "nmap-logstash-*";
 
+    public static final String DHCP_INDEX = "dhcp-*";
+
+    public static final String EVENTLOG_INDEX = "eventlog_2*";
+
     /**
      * nmap扫描时间间隔
      */
