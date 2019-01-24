@@ -56,14 +56,8 @@ public class BusinessController {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(BusinessController.class);
 
-    @Value("${ES_HOST}")
-    String esHost;
-
-    @Value("${ES_PORT}")
-    int esPort;
-
-    @Value("${ES_METHOD}")
-    String esMethod;
+    @Autowired
+    RestHighLevelClient restHighLevelClient;
 
     @Autowired
     ElasticService elasticService;
@@ -80,10 +74,8 @@ public class BusinessController {
      */
     @RequestMapping(value = "/getMacByIp", method = RequestMethod.GET)
     public String flowTrend(@RequestParam(value = "ip") String ip, @RequestParam(value = "time", required = false) String time) {
+        LOGGER.info("开始调用getMacByIp接口,ip参数为:" + ip + " time参数为:" + time);
         //查询指定时间过去七天之内指定ip最新的一条mac记录
-        RestHighLevelClient client = new RestHighLevelClient(
-                RestClient.builder(
-                        new HttpHost(esHost, esPort, esMethod)));
         //若没有指定时间 则默认当前时间
         DateTime nowTime;
         try {
@@ -103,19 +95,14 @@ public class BusinessController {
         searchRequest.source(searchSourceBuilder);
         String mac = "";
         try {
-            SearchResponse searchResponse = client.search(searchRequest);
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest);
             if (searchResponse.getHits().totalHits > 0) {
                 mac = (String) searchResponse.getHits().getAt(0).getSourceAsMap().get("mac");
             }
         } catch (IOException e) {
             e.printStackTrace();
-        } finally {
-            try {
-                client.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
         }
+        LOGGER.info("getMacByIp结果为:" + mac);
         return mac;
     }
 
@@ -139,9 +126,6 @@ public class BusinessController {
     public JsonObject realMonitor(@RequestParam("businessName") String businessName, @PathVariable("hours") int hours) {
         LOGGER.info("开始调用realMonitor接口,时间参数为:" + hours + " 业务名为:" + businessName);
         JsonObject bigJson = new JsonObject();
-        RestHighLevelClient client = new RestHighLevelClient(
-                RestClient.builder(new HttpHost(esHost, esPort, esMethod)));
-        String format = "yyyy-MM-dd HH:mm:ss";
         String oldTime = DateTime.now().minusHours(hours).toString(format);
         LOGGER.info("查询的起始时间为" + oldTime);
 
@@ -157,7 +141,7 @@ public class BusinessController {
         searchSourceBuilder.aggregation(AggregationBuilders.avg("duration").field("monitor.duration.us"));
         searchRequest.source(searchSourceBuilder);
         try {
-            SearchResponse searchResponse = client.search(searchRequest);
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest);
             ParsedAvg parsedAvg = searchResponse.getAggregations().get("duration");
             int duration = (int) (parsedAvg.getValue() / 1000);
             bigJson.addProperty("响应时间", duration + "ms");
@@ -178,7 +162,7 @@ public class BusinessController {
         searchSourceBuilder4.aggregation(AggregationBuilders.sum("outBytes").field("OUT_BYTES"));
         searchRequest4.source(searchSourceBuilder4);
         try {
-            SearchResponse searchResponse = client.search(searchRequest4);
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest4);
             ParsedSum inParsedSum = searchResponse.getAggregations().get("inBytes");
             String inStr = Constant.bytes2kb((long) inParsedSum.getValue());
             ParsedSum outParsedSum = searchResponse.getAggregations().get("outBytes");
@@ -206,7 +190,7 @@ public class BusinessController {
         searchSourceBuilder1.aggregation(AggregationBuilders.cardinality("IPV4").field("IPV4_SRC_ADDR"));
         searchRequest1.source(searchSourceBuilder1);
         try {
-            SearchResponse searchResponse = client.search(searchRequest1);
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest1);
             ParsedCardinality parsedCardinality = searchResponse.getAggregations().get("IPV4");
             bigJson.addProperty("访客数", parsedCardinality.getValue());
         } catch (IOException e) {
@@ -224,7 +208,7 @@ public class BusinessController {
         searchSourceBuilder3.fetchSource(new String[]{"ip", "manager", "dept", "location"}, null);
         searchRequest3.source(searchSourceBuilder3);
         try {
-            SearchResponse searchResponse = client.search(searchRequest3);
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest3);
             long allMachineCount = searchResponse.getHits().totalHits;
             List<String> onlineSocSystem = new ArrayList<>();
             //查询最近一次的nmap记录
@@ -243,12 +227,6 @@ public class BusinessController {
             bigJson.addProperty("服务器可用率", res + "%");
         } catch (IOException e) {
             e.printStackTrace();
-        } finally {
-            try {
-                client.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
         }
 
         LOGGER.info("realMonitor结果为" + bigJson);
@@ -262,10 +240,6 @@ public class BusinessController {
      */
     @RequestMapping(value = "/alertsCount/{hours}", method = RequestMethod.GET)
     public JsonObject alertsCount(@RequestParam("businessName") String businessName, @PathVariable("hours") int hours) {
-        RestHighLevelClient client = new RestHighLevelClient(
-                RestClient.builder(
-                        new HttpHost(esHost, esPort, esMethod)));
-        String format = "yyyy-MM-dd HH:mm:ss";
         String oldTime = DateTime.now().minusHours(hours).toString(format);
         LOGGER.info("开始调用alertsCount指定业务访问次数Top5,业务名为" + businessName);
         LOGGER.info("查询的起始时间为" + oldTime);
@@ -283,7 +257,7 @@ public class BusinessController {
 
         JsonObject finalJson = new JsonObject();
         try {
-            SearchResponse searchResponse = client.search(searchRequest);
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest);
             JsonArray keyArray = new JsonArray();
             JsonArray valueArray = new JsonArray();
             ParsedStringTerms parsedStringTerms = searchResponse.getAggregations().get("assetIP");
@@ -299,12 +273,6 @@ public class BusinessController {
             return finalJson;
         } catch (IOException e) {
             e.printStackTrace();
-        } finally {
-            try {
-                client.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
         }
         return null;
     }
@@ -335,10 +303,6 @@ public class BusinessController {
      */
     @RequestMapping(value = "/flowTrend/{hours}", method = RequestMethod.GET)
     public JsonObject flowTrend(@RequestParam String businessName, @PathVariable("hours") int hours) {
-        RestHighLevelClient client = new RestHighLevelClient(
-                RestClient.builder(
-                        new HttpHost(esHost, esPort, esMethod)));
-        String format = "yyyy-MM-dd HH:mm:ss";
         String oldTime = DateTime.now().minusHours(hours).toString(format);
         LOGGER.info("开始调用指定业务flowTrend流量趋势,业务名为" + businessName);
         LOGGER.info("查询的起始时间为" + oldTime);
@@ -359,7 +323,7 @@ public class BusinessController {
         searchRequest.source(searchSourceBuilder);
         JsonObject finalJson = new JsonObject();
         try {
-            SearchResponse searchResponse = client.search(searchRequest);
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest);
             JsonArray timeArray = new JsonArray();
             JsonArray valueArray = new JsonArray();
             ParsedDateHistogram timesTerms = searchResponse.getAggregations().get("times");
@@ -377,12 +341,6 @@ public class BusinessController {
             return finalJson;
         } catch (IOException e) {
             e.printStackTrace();
-        } finally {
-            try {
-                client.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
         }
         return null;
     }
@@ -394,10 +352,6 @@ public class BusinessController {
      */
     @RequestMapping(value = "/businessVisitCounts/{hours}", method = RequestMethod.GET)
     public JsonObject businessVisitCounts(@RequestParam("businessName") String businessName, @PathVariable("hours") int hours) {
-        RestHighLevelClient client = new RestHighLevelClient(
-                RestClient.builder(
-                        new HttpHost(esHost, esPort, esMethod)));
-        String format = "yyyy-MM-dd HH:mm:ss";
         String oldTime = DateTime.now().minusHours(hours).toString(format);
         LOGGER.info("开始调用businessVisitCounts指定业务访问次数Top5,业务名为" + businessName);
         LOGGER.info("查询的起始时间为" + oldTime);
@@ -415,7 +369,7 @@ public class BusinessController {
 
         JsonObject finalJson = new JsonObject();
         try {
-            SearchResponse searchResponse = client.search(searchRequest);
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest);
             JsonArray keyArray = new JsonArray();
             JsonArray valueArray = new JsonArray();
             ParsedStringTerms parsedStringTerms = searchResponse.getAggregations().get("IPV4");
@@ -430,12 +384,6 @@ public class BusinessController {
             return finalJson;
         } catch (IOException e) {
             e.printStackTrace();
-        } finally {
-            try {
-                client.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
         }
         return null;
     }
@@ -449,10 +397,6 @@ public class BusinessController {
     public JsonObject serverResponseTrend(@RequestParam("businessName") String businessName, @PathVariable("hours") int hours) {
         //todo 改为真实系统名称
         businessName = "统一权限管理";
-        RestHighLevelClient client = new RestHighLevelClient(
-                RestClient.builder(
-                        new HttpHost(esHost, esPort, esMethod)));
-        String format = "yyyy-MM-dd HH:mm:ss";
         String oldTime = DateTime.now().minusHours(hours).toString(format);
         LOGGER.info("开始调用serverResponseTrend指定业务服务响应时间趋势,业务名为" + businessName);
         LOGGER.info("查询的起始时间为" + oldTime);
@@ -471,7 +415,7 @@ public class BusinessController {
         searchRequest.source(searchSourceBuilder);
         JsonObject finalJson = new JsonObject();
         try {
-            SearchResponse searchResponse = client.search(searchRequest);
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest);
             JsonArray timeArray = new JsonArray();
             JsonArray valueArray = new JsonArray();
             ParsedDateHistogram timesTerms = searchResponse.getAggregations().get("times");
@@ -489,16 +433,9 @@ public class BusinessController {
             return finalJson;
         } catch (IOException e) {
             e.printStackTrace();
-        } finally {
-            try {
-                client.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
         }
         return null;
     }
-
 
     public static void main(String[] args) {
     }
