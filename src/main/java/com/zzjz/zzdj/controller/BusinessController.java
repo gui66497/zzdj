@@ -75,7 +75,7 @@ public class BusinessController {
     @RequestMapping(value = "/getMacByIp", method = RequestMethod.GET)
     public String flowTrend(@RequestParam(value = "ip") String ip, @RequestParam(value = "time", required = false) String time) {
         LOGGER.info("开始调用getMacByIp接口,ip参数为:" + ip + " time参数为:" + time);
-        //查询指定时间过去七天之内指定ip最新的一条mac记录
+        //查询指定时间过去30天之内指定ip最新的一条mac记录
         //若没有指定时间 则默认当前时间
         DateTime nowTime;
         try {
@@ -84,7 +84,7 @@ public class BusinessController {
             e.printStackTrace();
             nowTime = new DateTime();
         }
-        DateTime oldTime = nowTime.minusDays(7);
+        DateTime oldTime = nowTime.minusDays(30);
         SearchRequest searchRequest = new SearchRequest(Constant.DHCP_INDEX);
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         searchSourceBuilder.query(QueryBuilders.boolQuery()
@@ -197,37 +197,9 @@ public class BusinessController {
             e.printStackTrace();
         }
 
-        //4.平均访问量
-
-        // 3.业务可用率
-        // 通过soc-system和nmap数据得出
-        SearchRequest searchRequest3 = new SearchRequest(Constant.SOCSYSTEM_INDEX);
-        SearchSourceBuilder searchSourceBuilder3 = new SearchSourceBuilder();
-        searchSourceBuilder3.size(500);
-        searchSourceBuilder3.query(QueryBuilders.matchAllQuery());
-        searchSourceBuilder3.fetchSource(new String[]{"ip", "manager", "dept", "location"}, null);
-        searchRequest3.source(searchSourceBuilder3);
-        try {
-            SearchResponse searchResponse = restHighLevelClient.search(searchRequest3);
-            long allMachineCount = searchResponse.getHits().totalHits;
-            List<String> onlineSocSystem = new ArrayList<>();
-            //查询最近一次的nmap记录
-            Map<String, Boolean> nmapMap = elasticService.getAllNmap();
-            Iterator it = searchResponse.getHits().iterator();
-            while (it.hasNext()) {
-                SearchHit hit = (SearchHit) it.next();
-                String ip = hit.getSourceAsMap().get("ip").toString();
-                if (nmapMap.get(ip) != null && nmapMap.get(ip)) {
-                    onlineSocSystem.add(ip);
-                }
-            }
-            LOGGER.info("在线主机有:" + onlineSocSystem.toString());
-            LOGGER.info("在线主机数为:" + onlineSocSystem.size());
-            int res = (int) ((onlineSocSystem.size() * 100) / allMachineCount);
-            bigJson.addProperty("服务器可用率", res + "%");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        //4.服务器数量
+        List<String> ips = businessService.getIpListByName(businessName);
+        bigJson.addProperty("服务器数量", ips.size());
 
         LOGGER.info("realMonitor结果为" + bigJson);
         return bigJson;
@@ -275,24 +247,6 @@ public class BusinessController {
             e.printStackTrace();
         }
         return null;
-    }
-
-    /**
-     * 根据业务名添加ip约束
-     * @param businessName 业务名
-     * @return {"bool":{"should":[{"match_phrase":{"IPV4_DST_ADDR":{"query":"192.168.1.188"}}},{"match_phrase":{"IPV4_DST_ADDR":{"query":"192.168.1.243"}}}]}}
-     */
-    private BoolQueryBuilder getBoolQueryByBsName(String businessName, String key) {
-        List<String> ipList = businessService.getIpListByName(businessName);
-        if (ipList == null || ipList.size() < 1) {
-            throw new IllegalArgumentException("没有找到[" + businessName + "]系统");
-        }
-        BoolQueryBuilder boolQueryBuilder = new BoolQueryBuilder();
-        for (String ip : ipList) {
-            MatchPhraseQueryBuilder matchPhraseQueryBuilder = QueryBuilders.matchPhraseQuery(key, ip);
-            boolQueryBuilder.should(matchPhraseQueryBuilder);
-        }
-        return boolQueryBuilder;
     }
 
     /**
@@ -435,6 +389,24 @@ public class BusinessController {
             e.printStackTrace();
         }
         return null;
+    }
+
+    /**
+     * 根据业务名生成ip约束
+     * @param businessName 业务名
+     * @return {"bool":{"should":[{"match_phrase":{"IPV4_DST_ADDR":{"query":"192.168.1.188"}}},{"match_phrase":{"IPV4_DST_ADDR":{"query":"192.168.1.243"}}}]}}
+     */
+    private BoolQueryBuilder getBoolQueryByBsName(String businessName, String key) {
+        List<String> ipList = businessService.getIpListByName(businessName);
+        if (ipList == null || ipList.size() < 1) {
+            throw new IllegalArgumentException("没有找到[" + businessName + "]系统");
+        }
+        BoolQueryBuilder boolQueryBuilder = new BoolQueryBuilder();
+        for (String ip : ipList) {
+            MatchPhraseQueryBuilder matchPhraseQueryBuilder = QueryBuilders.matchPhraseQuery(key, ip);
+            boolQueryBuilder.should(matchPhraseQueryBuilder);
+        }
+        return boolQueryBuilder;
     }
 
     public static void main(String[] args) {
