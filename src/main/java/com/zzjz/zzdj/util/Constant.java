@@ -1,5 +1,6 @@
 package com.zzjz.zzdj.util;
 
+import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 
 /**
@@ -7,6 +8,7 @@ import java.math.BigDecimal;
  * @description Constant
  * @date 2018/7/31 14:43
  */
+@Component
 public class Constant {
 
     public static final String HEARTBEAT_INDEX = "heartbeat-*";
@@ -25,6 +27,8 @@ public class Constant {
 
     public static final String EVENTLOG_INDEX = "eventlog_2*";
 
+    public static final String SERVICEERROR_INDEX = "service_error-*";
+
     /**
      * 需要排除的ip 61是因为北京虚拟机没有固定对应的实体机而造出来的机器
      */
@@ -35,10 +39,6 @@ public class Constant {
      */
     public static final int NMAP_SCAN_INTERVAL = 11;
 
-    /**
-     * nessus地址
-     */
-    public static final String NESSUS_IP = "10.1.242.80";
 
     /**
      * byte(字节)根据长度转成kb(千字节)和mb(兆字节)或gb
@@ -74,7 +74,7 @@ public class Constant {
 
     }
 
-    public static String unReglularQuery = "{\n" +
+    public static final String unReglularQuery = "{\n" +
             "  \"size\": 5000,\n" +
             "  \"query\": {\n" +
             "    \"bool\": {\n" +

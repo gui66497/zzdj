@@ -58,6 +58,12 @@ public class ElasticController {
     ElasticService elasticService;
 
     /**
+     * nessus地址(无锡是192.168.1.195,电建是10.1.242.80)
+     */
+    @Value("${NESSUS_IP}")
+    public String nessusIp;
+
+    /**
      * 实时监测数据[电建左一]
      * @param hours 小时数
      * @return 结果
@@ -131,7 +137,7 @@ public class ElasticController {
         searchSourceBuilder2.query(QueryBuilders.boolQuery()
                 .must(QueryBuilders.rangeQuery("@timestamp")
                         .format(format).gte(oldTime).timeZone("Asia/Shanghai"))
-                .mustNot(QueryBuilders.matchPhraseQuery("ip",  Constant.NESSUS_IP))
+                .mustNot(QueryBuilders.matchPhraseQuery("ip",  nessusIp))
                 .mustNot(QueryBuilders.boolQuery()
                         .should(QueryBuilders.matchPhraseQuery("severity", "0"))
                         .should(QueryBuilders.matchPhraseQuery("severity", "1"))));
@@ -251,7 +257,7 @@ public class ElasticController {
         searchSourceBuilder2.query(QueryBuilders.boolQuery()
                 .must(QueryBuilders.rangeQuery("@timestamp")
                         .format(format).gte(oldTime).timeZone("Asia/Shanghai"))
-                .mustNot(QueryBuilders.matchPhraseQuery("ip",  Constant.NESSUS_IP))
+                .mustNot(QueryBuilders.matchPhraseQuery("ip",  "192.168.1.195"))
                 .mustNot(QueryBuilders.boolQuery()
                         .should(QueryBuilders.matchPhraseQuery("severity", "0"))
                         .should(QueryBuilders.matchPhraseQuery("severity", "1"))));
