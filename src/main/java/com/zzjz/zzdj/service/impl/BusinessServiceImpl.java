@@ -8,7 +8,6 @@ import com.zzjz.zzdj.bean.Business;
 import com.zzjz.zzdj.service.BusinessService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.system.ApplicationHome;
-import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.ResourceUtils;
 import java.io.File;
@@ -24,8 +23,11 @@ import java.util.List;
 @Service
 public class BusinessServiceImpl implements BusinessService {
 
-    @Value(value="classpath:Business.json")
-    private Resource resource;
+    /**
+     * 业务信息json文件名
+     */
+    @Value("${BUSINESS_FILENAME}")
+    String businessName;
 
     @Override
     public List<Business> getAllBusiness() {
@@ -36,7 +38,7 @@ public class BusinessServiceImpl implements BusinessService {
             ApplicationHome home = new ApplicationHome(getClass());
             //jar文件所在路径
             File jarFile = home.getSource();
-            String businessPath = jarFile.getParentFile().toString() + File.separator + "Business.json";
+            String businessPath = jarFile.getParentFile().toString() + File.separator + businessName;
             array = (JsonArray) parser.parse(new FileReader(ResourceUtils.getFile(businessPath)));
         } catch (IOException e) {
             e.printStackTrace();

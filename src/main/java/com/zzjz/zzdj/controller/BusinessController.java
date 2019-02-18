@@ -7,10 +7,8 @@ import com.zzjz.zzdj.service.BusinessService;
 import com.zzjz.zzdj.service.ElasticService;
 import com.zzjz.zzdj.util.Constant;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.http.HttpHost;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.MatchPhraseQueryBuilder;
@@ -32,7 +30,6 @@ import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -40,10 +37,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 
 /**
  * @author 房桂堂
@@ -136,7 +133,7 @@ public class BusinessController {
         searchSourceBuilder.query(QueryBuilders.boolQuery()
                 .must(QueryBuilders.rangeQuery("@timestamp")
                         .format(format).gte(oldTime).timeZone("Asia/Shanghai"))
-                .must(QueryBuilders.matchPhraseQuery("server_name", "统一权限管理")));
+                .must(QueryBuilders.matchPhraseQuery("server_name", /*"统一权限管理"*/businessName)));
         searchSourceBuilder.size(0);
         searchSourceBuilder.aggregation(AggregationBuilders.avg("duration").field("monitor.duration.us"));
         searchRequest.source(searchSourceBuilder);
@@ -350,7 +347,7 @@ public class BusinessController {
     @RequestMapping(value = "/serverResponseTrend/{hours}", method = RequestMethod.GET)
     public JsonObject serverResponseTrend(@RequestParam("businessName") String businessName, @PathVariable("hours") int hours) {
         //todo 改为真实系统名称
-        businessName = "统一权限管理";
+        //businessName = "统一权限管理";
         String oldTime = DateTime.now().minusHours(hours).toString(format);
         LOGGER.info("开始调用serverResponseTrend指定业务服务响应时间趋势,业务名为" + businessName);
         LOGGER.info("查询的起始时间为" + oldTime);
@@ -407,6 +404,37 @@ public class BusinessController {
             boolQueryBuilder.should(matchPhraseQueryBuilder);
         }
         return boolQueryBuilder;
+    }
+
+    /**
+     * 获取报警信息
+     * @return 报警信息
+     */
+    @RequestMapping(value = "/getAlarms", method = RequestMethod.GET)
+    public Set<String> getAlarm() {
+        //目前只有nmap不通(即nmap_lost)这一种类型会报警,数据从service_error表中来,且handled==未处理
+        SearchRequest searchRequest = new SearchRequest(Constant.SERVICEERROR_INDEX);
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        searchSourceBuilder.query(QueryBuilders.boolQuery()
+                .must(QueryBuilders.matchPhraseQuery("errorReason", "nmap_lost"))
+                .must(QueryBuilders.matchPhraseQuery("handled", "未处理")));
+        searchSourceBuilder.size(1000);
+        searchRequest.source(searchSourceBuilder);
+        Set<String> alarms = new HashSet<>();
+        try {
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest);
+            Iterator it = searchResponse.getHits().iterator();
+            while (it.hasNext()) {
+                SearchHit hit = (SearchHit) it.next();
+                String msg = hit.getSourceAsMap().get("errorType").toString() + ":"
+                        + hit.getSourceAsMap().get("errorMsg").toString();
+                alarms.add(msg);
+            }
+            System.out.println(1);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return alarms;
     }
 
     public static void main(String[] args) {
