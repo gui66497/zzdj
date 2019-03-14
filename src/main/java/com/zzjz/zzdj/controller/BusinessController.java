@@ -5,6 +5,7 @@ import com.google.gson.JsonObject;
 import com.zzjz.zzdj.bean.Business;
 import com.zzjz.zzdj.service.BusinessService;
 import com.zzjz.zzdj.service.ElasticService;
+import com.zzjz.zzdj.util.AutoRunner;
 import com.zzjz.zzdj.util.Constant;
 import org.apache.commons.lang3.StringUtils;
 import org.elasticsearch.action.search.SearchRequest;
@@ -37,10 +38,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * @author 房桂堂
@@ -65,7 +63,17 @@ public class BusinessController {
     String format = "yyyy-MM-dd HH:mm:ss";
 
     /**
-     * 根据时间获取指定ip对应的mac
+     * 根据ntop的导出数据得到ip对应mac
+     * @param ip ip地址
+     * @return mac地址
+     */
+    @RequestMapping(value = "/getMacByServerIp", method = RequestMethod.GET)
+    public String flowTrend(@RequestParam(value = "ip") String ip) {
+        return AutoRunner.ipMacMap.get(ip);
+    }
+
+    /**
+     * 根据时间获取指定ip对应的mac(与上面不同的是这里获取的mac地址都是10.121办公区网段)
      * @param time 时间(yyyy-MM-dd HH:mm:ss)
      * @return mac地址
      */
