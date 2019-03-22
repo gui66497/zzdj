@@ -85,32 +85,32 @@ public class Constant {
             "            \"should\": [\n" +
             "              {\n" +
             "                \"match_phrase\": {\n" +
-            "                  \"IPV4_DST_ADDR.keyword\": \"10.1.242.87\"\n" +
+            "                  \"IPV4_DST_ADDR\": \"10.1.242.87\"\n" +
             "                }\n" +
             "              },\n" +
             "              {\n" +
             "                \"match_phrase\": {\n" +
-            "                  \"IPV4_DST_ADDR.keyword\": \"10.1.242.93\"\n" +
+            "                  \"IPV4_DST_ADDR\": \"10.1.242.93\"\n" +
             "                }\n" +
             "              },\n" +
             "              {\n" +
             "                \"match_phrase\": {\n" +
-            "                  \"IPV4_DST_ADDR.keyword\": \"10.1.242.86\"\n" +
+            "                  \"IPV4_DST_ADDR\": \"10.1.242.86\"\n" +
             "                }\n" +
             "              },\n" +
             "              {\n" +
             "                \"match_phrase\": {\n" +
-            "                  \"IPV4_DST_ADDR.keyword\": \"10.1.242.95\"\n" +
+            "                  \"IPV4_DST_ADDR\": \"10.1.242.95\"\n" +
             "                }\n" +
             "              },\n" +
             "              {\n" +
             "                \"match_phrase\": {\n" +
-            "                  \"IPV4_DST_ADDR.keyword\": \"10.1.242.104\"\n" +
+            "                  \"IPV4_DST_ADDR\": \"10.1.242.104\"\n" +
             "                }\n" +
             "              },\n" +
             "              {\n" +
             "                \"match_phrase\": {\n" +
-            "                  \"IPV4_DST_ADDR.keyword\": \"10.1.242.84\"\n" +
+            "                  \"IPV4_DST_ADDR\": \"10.1.242.84\"\n" +
             "                }\n" +
             "              }\n" +
             "            ]\n" +
@@ -118,7 +118,7 @@ public class Constant {
             "        },\n" +
             "        {\n" +
             "          \"match_phrase\": {\n" +
-            "            \"L7_PROTO_NAME.keyword\": {\n" +
+            "            \"L7_PROTO_NAME\": {\n" +
             "              \"query\": \"HTTP\"\n" +
             "            }\n" +
             "          }\n" +
@@ -143,9 +143,8 @@ public class Constant {
             "        {\n" +
             "          \"range\": {\n" +
             "            \"@timestamp\": {\n" +
-            "              \"gte\": 1545741000000,\n" +
-            "              \"lte\": 1545742800000,\n" +
-            "              \"format\": \"epoch_millis\"\n" +
+            "              \"gte\": \"now-12h\",\n" +
+            "              \"lte\": \"now\"\n" +
             "            }\n" +
             "          }\n" +
             "        }\n" +
@@ -157,17 +156,17 @@ public class Constant {
             "            \"should\": [\n" +
             "              {\n" +
             "                \"match_phrase\": {\n" +
-            "                  \"IPV4_SRC_ADDR.keyword\": \"10.1.242.111\"\n" +
+            "                  \"IPV4_SRC_ADDR\": \"10.1.242.111\"\n" +
             "                }\n" +
             "              },\n" +
             "              {\n" +
             "                \"match_phrase\": {\n" +
-            "                  \"IPV4_SRC_ADDR.keyword\": \"10.1.230.159\"\n" +
+            "                  \"IPV4_SRC_ADDR\": \"10.1.230.159\"\n" +
             "                }\n" +
             "              },\n" +
             "              {\n" +
             "                \"match_phrase\": {\n" +
-            "                  \"IPV4_SRC_ADDR.keyword\": \"172.17.0.8\"\n" +
+            "                  \"IPV4_SRC_ADDR\": \"172.17.0.8\"\n" +
             "                }\n" +
             "              }\n" +
             "            ]\n" +

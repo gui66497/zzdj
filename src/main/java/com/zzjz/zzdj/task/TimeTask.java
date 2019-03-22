@@ -108,7 +108,8 @@ public class TimeTask {
         String startTime = DateTime.now().minusMinutes(NTOPNG_INTERVAL).toString(format);
         String endTime = DateTime.now().toString(format);
         LOGGER.info("查询的起始时间为" + startTime);
-        SearchRequest searchRequest = new SearchRequest("dj_ntopng-*");
+        //SearchRequest searchRequest = new SearchRequest("dj_ntopng-*");
+        SearchRequest searchRequest = new SearchRequest(Constant.NTOPNG_INDEX);
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         searchSourceBuilder.size(5000);
         searchSourceBuilder.query(QueryBuilders.boolQuery().must(
@@ -138,16 +139,16 @@ public class TimeTask {
     }
 
 
-    @Scheduled(cron="0 20 20 * * *")
+    @Scheduled(cron="0 25 11 * * *")
     public void sss2() throws IOException {
         RestClient restClient = RestClient.builder(
-                new HttpHost("192.168.1.188", 9200, "http"),
-                new HttpHost("192.168.1.185", 9200, "http"),
-                new HttpHost("192.168.1.186", 9200, "http")).build();
+                new HttpHost("10.1.242.79", 9200, "http"),
+                new HttpHost("10.1.242.78", 9200, "http"),
+                new HttpHost("10.1.242.80", 9200, "http")).build();
         String jsonString = Constant.unReglularQuery;
         HttpEntity entity = new StringEntity(jsonString, "utf-8");
         Header header = new BasicHeader("Content-Type", "application/json");
-        Response response = restClient.performRequest("GET", "/dj_ntopng-*/_doc/_search?pretty", Collections.emptyMap(), entity, header);
+        Response response = restClient.performRequest("GET", "/ntopng-*/_doc/_search?pretty", Collections.emptyMap(), entity, header);
         String res = EntityUtils.toString(response.getEntity());
         System.out.println(res);
         JsonObject resObject = new JsonParser().parse(res).getAsJsonObject();
@@ -249,8 +250,10 @@ public class TimeTask {
             if (!getResponse.isSourceEmpty()) {
                 String service = (String) getResponse.getSourceAsMap().get("used");
                 flow.setService(service);
+            } else {
+                flow.setService("未知");
             }
-            flow.setService("测试系统");
+            //flow.setService("测试系统");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -311,6 +314,7 @@ public class TimeTask {
                 jsonMap.put("dept", getResponse.getSourceAsMap().get("dept"));
                 String manager = (String) getResponse.getSourceAsMap().get("manager");
                 jsonMap.put("assetName", manager + "-" + ip);
+                jsonMap.put("location", getResponse.getSourceAsMap().get("area"));
             } else {
                 jsonMap.put("dept", "无");
                 jsonMap.put("assetName", flow.getDstIp());
