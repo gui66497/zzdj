@@ -3,6 +3,8 @@ package com.zzjz.zzdj.util;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.core.annotation.Order;
@@ -15,6 +17,8 @@ import java.util.Map;
 @Component
 @Order(10)// 执行顺序 越小优先级越高
 public class AutoRunner implements ApplicationRunner {
+
+    private final static Logger LOGGER = LoggerFactory.getLogger(AutoRunner.class);
 
     /**
      * 根据ntop导出的json数据初始化 ip和mac对应关系
@@ -30,5 +34,6 @@ public class AutoRunner implements ApplicationRunner {
         for(Map.Entry<String,JsonElement> entry : objectHosts.entrySet()){
             ipMacMap.put(entry.getKey(), entry.getValue().getAsJsonObject().get("mac").getAsString());
         }
+        LOGGER.info("ipMacMap数据初始化完毕，key总数为" + ipMacMap.size());
     }
 }
