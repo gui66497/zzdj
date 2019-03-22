@@ -63,23 +63,23 @@ public class BusinessController {
     String format = "yyyy-MM-dd HH:mm:ss";
 
     /**
-     * 根据ntop的导出数据得到ip对应mac
-     * @param ip ip地址
-     * @return mac地址
-     */
-    @RequestMapping(value = "/getMacByServerIp", method = RequestMethod.GET)
-    public String flowTrend(@RequestParam(value = "ip") String ip) {
-        return AutoRunner.ipMacMap.get(ip);
-    }
-
-    /**
-     * 根据时间获取指定ip对应的mac(与上面不同的是这里获取的mac地址都是10.121办公区网段)
+     * 根据时间获取指定ip对应的mac(先从ntop的ip和mac对应数据中查找[服务器网段]，如果没有再从dhcp数据中找[办公区网段])
+     * @param ip ip
      * @param time 时间(yyyy-MM-dd HH:mm:ss)
      * @return mac地址
      */
     @RequestMapping(value = "/getMacByIp", method = RequestMethod.GET)
-    public String flowTrend(@RequestParam(value = "ip") String ip, @RequestParam(value = "time", required = false) String time) {
-        LOGGER.info("开始调用getMacByIp接口,ip参数为:" + ip + " time参数为:" + time);
+    public String getMacByIp(@RequestParam(value = "ip") String ip, @RequestParam(value = "time", required = false) String time) {
+        LOGGER.info("开始调用getMacByIp接口,ip参数为:" + ip + ",time参数为:" + time);
+        if (StringUtils.isBlank(ip)) {
+            throw new IllegalArgumentException("lost ip argument");
+        }
+        if (AutoRunner.ipMacMap.containsKey(ip)) {
+            LOGGER.info("直接在ipMacMap中找到了对应mac");
+            return AutoRunner.ipMacMap.get(ip);
+        }
+
+        LOGGER.info("没有再ipMacMap中找到对应mac，开始查找dhcp数据");
         //查询指定时间过去30天之内指定ip最新的一条mac记录
         //若没有指定时间 则默认当前时间
         DateTime nowTime;
