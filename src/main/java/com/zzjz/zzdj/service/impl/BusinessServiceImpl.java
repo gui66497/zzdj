@@ -7,12 +7,8 @@ import com.google.gson.reflect.TypeToken;
 import com.zzjz.zzdj.bean.Business;
 import com.zzjz.zzdj.service.BusinessService;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.system.ApplicationHome;
 import org.springframework.stereotype.Service;
-import org.springframework.util.ResourceUtils;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.List;
 
 /**
@@ -34,16 +30,7 @@ public class BusinessServiceImpl implements BusinessService {
         Gson gson = new Gson();
         JsonParser parser = new JsonParser();
         JsonArray array;
-        try {
-            ApplicationHome home = new ApplicationHome(getClass());
-            //jar文件所在路径
-            File jarFile = home.getSource();
-            String businessPath = jarFile.getParentFile().toString() + File.separator + businessName;
-            array = (JsonArray) parser.parse(new FileReader(ResourceUtils.getFile(businessPath)));
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
-        }
+        array = (JsonArray) parser.parse(new InputStreamReader(this.getClass().getClassLoader().getResourceAsStream(businessName)));
         return gson.fromJson(array, new TypeToken<List<Business>>(){}.getType());
     }
 
