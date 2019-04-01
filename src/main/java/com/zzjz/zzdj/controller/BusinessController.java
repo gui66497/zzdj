@@ -2,6 +2,7 @@ package com.zzjz.zzdj.controller;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.zzjz.zzdj.bean.Alarm;
 import com.zzjz.zzdj.bean.Business;
 import com.zzjz.zzdj.service.BusinessService;
 import com.zzjz.zzdj.service.ElasticService;
@@ -415,11 +416,16 @@ public class BusinessController {
     }
 
     /**
+     * 记录上次的报警结果
+     */
+    private Set<Alarm> lastAlarm;
+
+    /**
      * 获取报警信息
      * @return 报警信息
      */
     @RequestMapping(value = "/getAlarms", method = RequestMethod.GET)
-    public Set<String> getAlarm() {
+    public Set<Alarm> getAlarm() {
         //目前只有nmap不通(即nmap_lost)这一种类型会报警,数据从service_error表中来,且handled==未处理
         SearchRequest searchRequest = new SearchRequest(Constant.SERVICEERROR_INDEX);
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
@@ -428,7 +434,7 @@ public class BusinessController {
                 .must(QueryBuilders.matchPhraseQuery("handled", "未处理")));
         searchSourceBuilder.size(1000);
         searchRequest.source(searchSourceBuilder);
-        Set<String> alarms = new HashSet<>();
+        Set<Alarm> alarms = new HashSet<>();
         try {
             SearchResponse searchResponse = restHighLevelClient.search(searchRequest);
             Iterator it = searchResponse.getHits().iterator();
@@ -436,13 +442,46 @@ public class BusinessController {
                 SearchHit hit = (SearchHit) it.next();
                 String msg = hit.getSourceAsMap().get("errorType").toString() + ":"
                         + hit.getSourceAsMap().get("errorMsg").toString();
-                alarms.add(msg);
+                if (lastAlarm != null && getAlarmByMsg(lastAlarm, msg) != null) {
+                    //已经有这条消息
+                    Alarm oldAlarm = getAlarmByMsg(lastAlarm, msg);
+                    if (oldAlarm.isNew()) {
+                        //每次调用其count-1 直到小于0则代表不是新消息了 默认是三次后变为旧消息
+                        if (oldAlarm.getCount() == 0) {
+                            alarms.add(new Alarm(msg, false, 0));
+                        } else {
+                            alarms.add(new Alarm(msg, true, oldAlarm.getCount() - 1));
+                        }
+                    } else {
+                        alarms.add(new Alarm(msg, false, 0));
+                    }
+                } else  {
+                    //没有这条消息
+                    alarms.add(new Alarm(msg, true));
+                }
+
             }
             System.out.println(1);
         } catch (IOException e) {
             e.printStackTrace();
         }
+        lastAlarm = alarms;
         return alarms;
+    }
+
+    /**
+     * 通过msg在alarms中找
+     * @param alarms alarms
+     * @param msg msg
+     * @return alarm
+     */
+    public Alarm getAlarmByMsg(Set<Alarm> alarms, String msg) {
+        for (Alarm alarm : alarms) {
+            if (msg.equals(alarm.getMsg())) {
+                return alarm;
+            }
+        }
+        return null;
     }
 
     public static void main(String[] args) {
