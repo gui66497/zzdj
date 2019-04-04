@@ -32,6 +32,7 @@ import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -60,6 +61,9 @@ public class BusinessController {
 
     @Autowired
     BusinessService businessService;
+
+    @Value("${spring.profiles.active}")
+    String active;
 
     String format = "yyyy-MM-dd HH:mm:ss";
 
@@ -138,19 +142,22 @@ public class BusinessController {
         // 1.业务平均响应时间
         SearchRequest searchRequest = new SearchRequest(Constant.HEARTBEAT_INDEX);
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-        //todo 改为真实系统
         searchSourceBuilder.query(QueryBuilders.boolQuery()
                 .must(QueryBuilders.rangeQuery("@timestamp")
                         .format(format).gte(oldTime).timeZone("Asia/Shanghai"))
-                .must(QueryBuilders.matchPhraseQuery("server_name", /*"统一权限管理"*/businessName)));
+                .must(QueryBuilders.matchPhraseQuery("server_name", businessName)));
         searchSourceBuilder.size(0);
         searchSourceBuilder.aggregation(AggregationBuilders.avg("duration").field("monitor.duration.us"));
         searchRequest.source(searchSourceBuilder);
         try {
             SearchResponse searchResponse = restHighLevelClient.search(searchRequest);
             ParsedAvg parsedAvg = searchResponse.getAggregations().get("duration");
-            int duration = (int) (parsedAvg.getValue() / 1000);
-            bigJson.addProperty("响应时间", duration + "ms");
+            double microDuration = parsedAvg.getValue();
+            if (Double.isInfinite(microDuration)) {
+                microDuration = 0;
+            }
+            int millsDuration = (int) (microDuration / 1000);
+            bigJson.addProperty("响应时间", millsDuration + "ms");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -170,11 +177,11 @@ public class BusinessController {
         try {
             SearchResponse searchResponse = restHighLevelClient.search(searchRequest4);
             ParsedSum inParsedSum = searchResponse.getAggregations().get("inBytes");
-            String inStr = Constant.bytes2kb((long) inParsedSum.getValue());
+            String inStr = Constant.readableFileSize((long) inParsedSum.getValue());
             ParsedSum outParsedSum = searchResponse.getAggregations().get("outBytes");
-            String outStr = Constant.bytes2kb((long) outParsedSum.getValue());
+            String outStr = Constant.readableFileSize((long) outParsedSum.getValue());
             long total = (long) (inParsedSum.getValue() + outParsedSum.getValue());
-            String totalStr = Constant.bytes2kb(total);
+            String totalStr = Constant.readableFileSize(total);
             JsonObject flowObject = new JsonObject();
             flowObject.addProperty("in", inStr);
             flowObject.addProperty("out", outStr);
@@ -355,8 +362,7 @@ public class BusinessController {
      */
     @RequestMapping(value = "/serverResponseTrend/{hours}", method = RequestMethod.GET)
     public JsonObject serverResponseTrend(@RequestParam("businessName") String businessName, @PathVariable("hours") int hours) {
-        //todo 改为真实系统名称
-        //businessName = "统一权限管理";
+        if ("dev".equals(active)) { businessName = "统一权限管理"; }
         String oldTime = DateTime.now().minusHours(hours).toString(format);
         LOGGER.info("开始调用serverResponseTrend指定业务服务响应时间趋势,业务名为" + businessName);
         LOGGER.info("查询的起始时间为" + oldTime);

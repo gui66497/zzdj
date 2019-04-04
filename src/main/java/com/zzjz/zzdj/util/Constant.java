@@ -2,6 +2,7 @@ package com.zzjz.zzdj.util;
 
 import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
+import java.text.DecimalFormat;
 
 /**
  * @author 房桂堂
@@ -39,12 +40,26 @@ public class Constant {
      */
     public static final int NMAP_SCAN_INTERVAL = 11;
 
+    /**
+     * 将bytes转为可读
+     * @param size bytes
+     * @return str
+     */
+    public static String readableFileSize(long size) {
+        if (size <= 0) {
+            return "0";
+        }
+        final String[] units = new String[]{"B", "KB", "MB", "GB", "TB"};
+        int digitGroups = (int) (Math.log10(size) / Math.log10(1024));
+        return new DecimalFormat("#,##0.0#").format(size / Math.pow(1024, digitGroups)) + units[digitGroups];
+    }
 
     /**
      * byte(字节)根据长度转成kb(千字节)和mb(兆字节)或gb
      * @param bytes 字节
      * @return String
      */
+    @Deprecated
     public static String bytes2kb(long bytes) {
         BigDecimal filesize = new BigDecimal(bytes);
         BigDecimal gigabyte = new BigDecimal(1024 * 1024 * 1024);
@@ -185,7 +200,8 @@ public class Constant {
             "}";
 
     public static void main(String[] args) {
-        System.out.println(bytes2mb(1468774));
+        System.out.println(bytes2kb(1468774000000L));
+        System.out.println(readableFileSize(1468774000000L));
     }
 
 }

@@ -198,11 +198,11 @@ public class ElasticController {
         try {
             SearchResponse searchResponse = client.search(searchRequest4);
             ParsedSum inParsedSum = searchResponse.getAggregations().get("inBytes");
-            String inStr = Constant.bytes2kb((long) inParsedSum.getValue());
+            String inStr = Constant.readableFileSize((long) inParsedSum.getValue());
             ParsedSum outParsedSum = searchResponse.getAggregations().get("outBytes");
-            String outStr = Constant.bytes2kb((long) outParsedSum.getValue());
+            String outStr = Constant.readableFileSize((long) outParsedSum.getValue());
             long total = (long) (inParsedSum.getValue() + outParsedSum.getValue());
-            String totalStr = Constant.bytes2kb(total);
+            String totalStr = Constant.readableFileSize(total);
             JsonObject flowObject = new JsonObject();
             flowObject.addProperty("in", inStr);
             flowObject.addProperty("out", outStr);
