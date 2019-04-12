@@ -139,7 +139,7 @@ public class TimeTask {
     }
 
 
-    @Scheduled(cron="0 25 11 * * *")
+    //@Scheduled(cron="0 25 11 * * *")
     public void sss2() throws IOException {
         RestClient restClient = RestClient.builder(
                 new HttpHost("10.1.242.79", 9200, "http"),
