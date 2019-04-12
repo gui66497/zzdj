@@ -11,7 +11,10 @@ import com.zzjz.zzdj.util.Constant;
 import org.apache.commons.lang3.StringUtils;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.action.update.UpdateRequest;
+import org.elasticsearch.action.update.UpdateResponse;
 import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.MatchPhraseQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
@@ -234,7 +237,8 @@ public class BusinessController {
         searchSourceBuilder.query(QueryBuilders.boolQuery()
                 .must(QueryBuilders.rangeQuery("@timestamp")
                         .format(format).gte(oldTime).timeZone("Asia/Shanghai"))
-                .must(getBoolQueryByBsName(businessName, "assetIP.keyword")));
+                .must(getBoolQueryByBsName(businessName, "assetIP.keyword"))
+                .mustNot(QueryBuilders.matchPhraseQuery("eventType", "攻击威胁")));
         searchSourceBuilder.size(0);
         searchSourceBuilder.aggregation(AggregationBuilders.terms("assetIP")
                 .size(5).field("assetIP.keyword").order(BucketOrder.aggregation("_count", false)));
@@ -489,6 +493,25 @@ public class BusinessController {
         }
         return null;
     }
+
+    /**
+     * 将eventlog置为已处理
+     * @param id id
+     */
+    @RequestMapping(value = "/handleEvent/{index}/{id}", method = RequestMethod.GET)
+    public void handleEvent(@PathVariable("index") String index, @PathVariable("id") String id) {
+        UpdateRequest request = new UpdateRequest(index, "doc", id);
+        String jsonString = "{" +
+                "\"handled\":\"已处理\"" +
+                "}";
+        request.doc(jsonString, XContentType.JSON);
+        try {
+            UpdateResponse updateResponse = restHighLevelClient.update(request);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
 
     public static void main(String[] args) {
     }
