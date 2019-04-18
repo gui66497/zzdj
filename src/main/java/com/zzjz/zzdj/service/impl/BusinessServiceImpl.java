@@ -45,4 +45,20 @@ public class BusinessServiceImpl implements BusinessService {
         return null;
     }
 
+    @Override
+    public String getLocationByName(String businessName) {
+        List<Business> businesses = getAllBusiness();
+        for (Business b : businesses) {
+            if (businessName.equals(b.getBusinessName())) {
+                String firstIp = b.getIpList().get(0);
+                if (firstIp.contains("10.1.242")) {
+                    return "石家庄";
+                } else if (firstIp.contains("10.1.230")) {
+                    return "北京";
+                }
+            }
+        }
+        return "未知";
+    }
+
 }

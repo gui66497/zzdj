@@ -24,4 +24,11 @@ public interface BusinessService {
      * @return ip列表
      */
     List<String> getIpListByName(String businessName);
+
+    /**
+     * 根据业务名称获取所属地区(242网段的为石家庄,230网段的为北京)
+     * @param businessName 业务名
+     * @return 结果
+     */
+    String getLocationByName(String businessName);
 }
