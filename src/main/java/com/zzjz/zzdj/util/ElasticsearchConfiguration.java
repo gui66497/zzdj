@@ -1,7 +1,12 @@
 package com.zzjz.zzdj.util;
 
 import org.apache.http.HttpHost;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.client.CredentialsProvider;
+import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.elasticsearch.client.RestClient;
+import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +36,12 @@ public class ElasticsearchConfiguration implements FactoryBean<RestHighLevelClie
 
     @Value("${ES_METHOD}")
     String esMethod;
+
+    @Value("${ES_USER}")
+    String esUser;
+
+    @Value("${ES_PASS}")
+    String esPass;
 
     private RestHighLevelClient restHighLevelClient;
 
@@ -71,8 +82,14 @@ public class ElasticsearchConfiguration implements FactoryBean<RestHighLevelClie
 
     private RestHighLevelClient buildClient() {
         try {
-            restHighLevelClient = new RestHighLevelClient(
-                    RestClient.builder(new HttpHost(esHost, esPort, esMethod)));
+            /*restHighLevelClient = new RestHighLevelClient(
+                    RestClient.builder(new HttpHost(esHost, esPort, esMethod)));*/
+            final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+            credentialsProvider.setCredentials(AuthScope.ANY,
+                    new UsernamePasswordCredentials(esUser, esPass));
+            RestClientBuilder builder = RestClient.builder(new HttpHost(esHost, esPort))
+                    .setHttpClientConfigCallback(httpClientBuilder -> httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider));
+            restHighLevelClient = new RestHighLevelClient(builder);
         } catch (Exception e) {
             LOGGER.error(e.getMessage());
         }
